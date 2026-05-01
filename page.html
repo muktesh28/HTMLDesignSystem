@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sitecore AI Design System Architecture</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f2;
+    --color-background-tertiary: #eeede8;
+    --color-background-info: #e6f1fb;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5c5c58;
+    --color-text-tertiary: #9e9e98;
+    --color-text-info: #185fa5;
+    --color-border-tertiary: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --color-border-primary: rgba(0,0,0,0.35);
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2a2a28;
+      --color-background-tertiary: #333330;
+      --color-background-info: #042c53;
+      --color-text-primary: #e8e8e2;
+      --color-text-secondary: #a8a8a0;
+      --color-text-tertiary: #9e9e98;
+      --color-text-info: #85b7eb;
+      --color-border-tertiary: rgba(255,255,255,0.1);
+      --color-border-secondary: rgba(255,255,255,0.18);
+      --color-border-primary: rgba(255,255,255,0.28);
+    }
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background-tertiary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--color-background-primary);
+    border-radius: 16px;
+    padding: 28px 28px 32px;
+    border: 0.5px solid var(--color-border-tertiary);
+  }
+
+  .page-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 20px;
+  }
+
+  .w { font-size: 13px; color: var(--color-text-primary); }
+  .sr-only { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0); }
+
+  .tab-row { display:flex; gap:4px; margin-bottom:18px; }
+  .tab { font-size:12px; padding:5px 12px; border-radius:20px; border:0.5px solid var(--color-border-tertiary); background:transparent; color:var(--color-text-tertiary); cursor:pointer; transition:all 0.15s; font-family:var(--font-sans); }
+  .tab.on { background:var(--color-text-primary); color:var(--color-background-primary); border-color:transparent; font-weight:500; }
+
+  .layer { border:0.5px solid var(--color-border-tertiary); border-radius:14px; padding:16px 18px; background:var(--color-background-primary); margin-bottom:0; }
+  .layer-eyebrow { font-size:10px; font-weight:500; letter-spacing:0.07em; text-transform:uppercase; color:var(--color-text-tertiary); margin:0 0 6px; }
+  .layer-title { font-size:14px; font-weight:500; color:var(--color-text-primary); margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .layer-accent { width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .three-col { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .four-col { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .six-col { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+
+  @media (max-width: 500px) {
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .four-col { grid-template-columns: repeat(2,1fr); }
+  }
+
+  .inset { background:var(--color-background-secondary); border-radius:10px; padding:12px 14px; }
+  .inset-title { font-size:12px; font-weight:500; color:var(--color-text-primary); margin:0 0 3px; }
+  .inset-sub { font-size:11px; color:var(--color-text-tertiary); margin:0 0 8px; line-height:1.4; }
+
+  .attr-chip { background:var(--color-background-primary); border:0.5px solid var(--color-border-tertiary); border-radius:6px; padding:5px 8px; text-align:center; font-size:11px; color:var(--color-text-secondary); }
+
+  .theme-swatch { border-radius:8px; padding:8px 6px; text-align:center; border:0.5px solid var(--color-border-tertiary); }
+  .ts-label { font-size:10px; font-weight:500; margin-top:4px; }
+
+  .conn { display:flex; flex-direction:column; align-items:center; gap:0; margin:8px 0; }
+  .conn-line { width:1px; height:16px; background:var(--color-border-secondary); }
+  .conn-dot { width:5px; height:5px; border-radius:50%; background:var(--color-border-secondary); }
+  .conn-text { font-size:10px; color:var(--color-text-tertiary); padding:2px 8px; background:var(--color-background-primary); border:0.5px solid var(--color-border-tertiary); border-radius:10px; margin:2px 0; }
+
+  .tag { display:inline-block; font-size:10px; font-weight:500; padding:2px 7px; border-radius:8px; }
+  .tag-blue { background:#E6F1FB; color:#185FA5; }
+  .tag-green { background:#EAF3DE; color:#3B6D11; }
+  .tag-purple { background:#EEEDFE; color:#534AB7; }
+  .tag-amber { background:#FAEEDA; color:#854F0B; }
+  .tag-teal { background:#E1F5EE; color:#0F6E56; }
+  .tag-gray { background:var(--color-background-secondary); color:var(--color-text-secondary); }
+  @media (prefers-color-scheme:dark) {
+    .tag-blue { background:#042C53; color:#85B7EB; }
+    .tag-green { background:#173404; color:#C0DD97; }
+    .tag-purple { background:#26215C; color:#AFA9EC; }
+    .tag-amber { background:#412402; color:#FAC775; }
+    .tag-teal { background:#04342C; color:#5DCAA5; }
+  }
+
+  .ref-bar { background:var(--color-background-secondary); border-radius:8px; padding:9px 12px; display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .ref-label { font-size:11px; color:var(--color-text-tertiary); }
+  .ref-link { font-size:11px; color:var(--color-text-info); text-decoration:none; }
+  .ref-link:hover { text-decoration:underline; }
+
+  .pkg-row { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:10px; }
+  @media (max-width:500px) { .pkg-row { grid-template-columns:repeat(3,1fr); } }
+  .pkg-btn { border:0.5px solid var(--color-border-tertiary); border-radius:10px; padding:10px 6px; text-align:center; cursor:pointer; transition:all 0.15s; background:var(--color-background-primary); }
+  .pkg-btn:hover { border-color:var(--color-border-secondary); background:var(--color-background-secondary); }
+  .pkg-btn.on { border-color:var(--color-text-primary); background:var(--color-background-secondary); }
+  .pkg-num { font-size:18px; line-height:1; color:var(--color-text-tertiary); margin-bottom:4px; }
+  .pkg-name { font-size:11px; font-weight:500; color:var(--color-text-primary); }
+  .pkg-sub { font-size:10px; color:var(--color-text-tertiary); margin-top:2px; }
+
+  .detail { background:var(--color-background-secondary); border-radius:10px; padding:12px 14px; }
+  .detail-hint { font-size:11px; color:var(--color-text-tertiary); }
+  .detail-name { font-size:13px; font-weight:500; color:var(--color-text-primary); margin-bottom:10px; }
+  .detail-row { display:flex; justify-content:space-between; gap:12px; margin-bottom:7px; font-size:11px; }
+  .detail-row:last-child { margin-bottom:0; }
+  .dk { color:var(--color-text-tertiary); white-space:nowrap; }
+  .dv { color:var(--color-text-primary); text-align:right; line-height:1.4; }
+
+  .perm-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .perm-box { flex:1; min-width:70px; background:var(--color-background-secondary); border-radius:8px; padding:10px 8px; text-align:center; }
+  .perm-num { font-size:18px; font-weight:500; color:var(--color-text-primary); }
+  .perm-lbl { font-size:10px; color:var(--color-text-tertiary); margin-top:1px; }
+  .perm-op { font-size:16px; color:var(--color-text-tertiary); flex-shrink:0; }
+  .perm-result { flex:1; min-width:80px; background:var(--color-text-primary); border-radius:8px; padding:10px 8px; text-align:center; }
+  .perm-result .perm-num { color:var(--color-background-primary); font-size:13px; }
+  .perm-result .perm-lbl { color:var(--color-background-secondary); }
+
+  .varies-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+  @media (max-width:500px) { .varies-row { grid-template-columns:1fr; } }
+
+  .gloss-list { display:grid; gap:6px; }
+  .gloss-item { padding:10px 12px; background:var(--color-background-secondary); border-radius:8px; }
+  .gloss-term { font-size:12px; font-weight:500; color:var(--color-text-primary); margin-bottom:2px; }
+  .gloss-def { font-size:11px; color:var(--color-text-secondary); line-height:1.5; }
+
+  .divider { border:none; border-top:0.5px solid var(--color-border-tertiary); margin:14px 0; }
+  .section-label { font-size:11px; font-weight:500; color:var(--color-text-secondary); margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="page-title">Sitecore AI design system — architecture overview</div>
+
+  <div class="w">
+    <h2 class="sr-only">New design system architecture — overview, advisor packages, and glossary</h2>
+
+    <div class="tab-row">
+      <button class="tab on" onclick="show('overview',this)">System overview</button>
+      <button class="tab" onclick="show('packages',this)">Advisor packages</button>
+    </div>
+
+    <div id="v-overview">
+
+      <div class="layer">
+        <div class="layer-eyebrow">Layer 1</div>
+        <div class="layer-title">
+          <span class="layer-accent" style="background:#534AB7;"></span>
+          Figma design system
+          <span class="tag tag-purple" style="margin-left:auto;">Brand &times; Theme</span>
+        </div>
+        <div class="two-col">
+          <div class="inset">
+            <div class="inset-title">Style attributes</div>
+            <div class="inset-sub">Updated per brand and theme combination via tokens</div>
+            <div class="six-col">
+              <div class="attr-chip">Background</div>
+              <div class="attr-chip">Surface</div>
+              <div class="attr-chip">Border</div>
+              <div class="attr-chip">Text</div>
+              <div class="attr-chip">Icon</div>
+              <div class="attr-chip">Fill</div>
+            </div>
+          </div>
+          <div class="inset">
+            <div class="inset-title">Themes</div>
+            <div class="inset-sub">Applied at component or page level</div>
+            <div class="four-col">
+              <div class="theme-swatch" style="background:#1a1a2e;border-color:#3C3489;">
+                <div class="ts-label" style="color:#CECBF6;">Brand</div>
+              </div>
+              <div class="theme-swatch" style="background:#222;border-color:#555;">
+                <div class="ts-label" style="color:#aaa;">Dark</div>
+              </div>
+              <div class="theme-swatch" style="background:#f4f4f0;border-color:#d8d8d0;">
+                <div class="ts-label" style="color:#444;">Light</div>
+              </div>
+              <div class="theme-swatch" style="background:#fff;border-color:#e0e0da;">
+                <div class="ts-label" style="color:#222;">White</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conn">
+        <div class="conn-dot"></div>
+        <div class="conn-line"></div>
+        <div class="conn-text">tokens feed into</div>
+        <div class="conn-line"></div>
+        <div class="conn-dot"></div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-eyebrow">Layer 2</div>
+        <div class="layer-title">
+          <span class="layer-accent" style="background:#0F6E56;"></span>
+          Sitecore AI CMS
+        </div>
+        <div class="three-col">
+          <div class="inset">
+            <div class="inset-title">Components</div>
+            <div class="inset-sub">CMS-managed building blocks with token slots for styling</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+              <span class="tag tag-teal">Billboard</span>
+              <span class="tag tag-teal">MainNav</span>
+              <span class="tag tag-teal">Cardlist</span>
+              <span class="tag tag-teal">RTE Table</span>
+              <span class="tag tag-teal">Form</span>
+              <span class="tag tag-gray">+ more</span>
+            </div>
+          </div>
+          <div class="inset">
+            <div class="inset-title">Variants</div>
+            <div class="inset-sub">Alternate layouts per component, each accepting token-based styling</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+              <span class="tag tag-teal">Layout A</span>
+              <span class="tag tag-teal">Layout B</span>
+              <span class="tag tag-teal">Layout C</span>
+              <span class="tag tag-gray">per component</span>
+            </div>
+			
+          </div>
+		  <div class="inset">
+			  <div class="inset-title">Info architecture</div>
+              <div class="inset-sub">Nav structure and page hierarchy — configurable per site</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conn">
+        <div class="conn-dot"></div>
+        <div class="conn-line"></div>
+        <div class="conn-text">content + styling rendered by</div>
+        <div class="conn-line"></div>
+        <div class="conn-dot"></div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-eyebrow">Layer 3</div>
+        <div class="layer-title">
+          <span class="layer-accent" style="background:#185FA5;"></span>
+          Headless Next.js frontend
+        </div>
+        <div class="two-col">
+          <div class="inset">
+            <div class="inset-title">Pages</div>
+            <div class="inset-sub">Composed from CMS components at page or partial design level</div>
+          </div>
+          <div class="inset">
+            <div class="inset-title">Theme scope</div>
+            <div class="inset-sub">Brand / dark / light / white — global or per component</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conn">
+        <div class="conn-dot"></div>
+        <div class="conn-line"></div>
+        <div class="conn-text">delivers experiences for</div>
+        <div class="conn-line"></div>
+        <div class="conn-dot"></div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-eyebrow">Layer 4</div>
+        <div class="layer-title">
+          <span class="layer-accent" style="background:#854F0B;"></span>
+          Sites
+        </div>
+        <div class="two-col">
+          <div class="inset">
+            <div class="inset-title" style="display:flex;align-items:center;gap:6px;">Dotcom — corporate website <span class="tag tag-gray">In progress</span></div>
+            <div class="inset-sub">Single brand identity, unified information architecture.</div>
+          </div>
+          <div class="inset" style="border:0.5px solid var(--color-border-secondary);">
+            <div class="inset-title" style="display:flex;align-items:center;gap:6px;">Advisor websites <span class="tag tag-blue">Next</span></div>
+            <div class="inset-sub" style="margin-bottom:6px;">~5 packages, each with unique token config, components, and IA</div>
+            <span class="tag tag-blue">Up to 5 packages</span>
+            <span class="tag tag-blue" style="margin-left:4px;">Unique IA per pkg</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="v-packages" style="display:none;">
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:10px;">Select a package to see its configuration</div>
+      <div class="pkg-row">
+        <div class="pkg-btn" onclick="selectPkg(1)" id="p1"><div class="pkg-num">1</div><div class="pkg-name">Package 1</div><div class="pkg-sub">Conservative</div></div>
+        <div class="pkg-btn" onclick="selectPkg(2)" id="p2"><div class="pkg-num">2</div><div class="pkg-name">Package 2</div><div class="pkg-sub">Growth</div></div>
+        <div class="pkg-btn" onclick="selectPkg(3)" id="p3"><div class="pkg-num">3</div><div class="pkg-name">Package 3</div><div class="pkg-sub">Premium</div></div>
+        <div class="pkg-btn" onclick="selectPkg(4)" id="p4"><div class="pkg-num">4</div><div class="pkg-name">Package 4</div><div class="pkg-sub">Regional</div></div>
+        <div class="pkg-btn" onclick="selectPkg(5)" id="p5"><div class="pkg-num">5</div><div class="pkg-name">Package 5</div><div class="pkg-sub">Boutique</div></div>
+      </div>
+
+      <div class="detail" id="pkg-detail">
+        <div class="detail-hint">Click a package above to explore its configuration</div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="section-label">What varies across packages</div>
+      <div class="varies-row">
+        <div class="inset">
+          <div class="inset-title">Figma token values</div>
+          <div class="inset-sub">Background, surface, border, text, icon, fill — adjustable per brand and theme</div>
+        </div>
+        <div class="inset">
+          <div class="inset-title">Component selection</div>
+          <div class="inset-sub">Which components and variants are included in the package library</div>
+        </div>
+        <div class="inset">
+          <div class="inset-title">Information architecture</div>
+          <div class="inset-sub">Page hierarchy, navigation structure, and content organisation</div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="section-label">Permutation dimensions per package</div>
+      <div class="perm-row">
+        <div class="perm-box"><div class="perm-num">6</div><div class="perm-lbl">style attributes</div></div>
+        <div class="perm-op">&times;</div>
+        <div class="perm-box"><div class="perm-num">4</div><div class="perm-lbl">themes</div></div>
+        <div class="perm-op">&times;</div>
+        <div class="perm-box"><div class="perm-num">N</div><div class="perm-lbl">components</div></div>
+        <div class="perm-op">&times;</div>
+        <div class="perm-box"><div class="perm-num">unique</div><div class="perm-lbl">IA per site</div></div>
+        <div class="perm-op">=</div>
+        <div class="perm-result"><div class="perm-num">Distinct advisor site</div><div class="perm-lbl">per package</div></div>
+      </div>
+    </div>
+
+    <div id="v-glossary" style="display:none;">
+      <div class="gloss-list">
+        <div class="gloss-item"><div class="gloss-term">Figma token</div><div class="gloss-def">A named design variable (e.g. color.background.primary) storing a value — color, spacing, border width. Updating a token propagates changes across every component that references it.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Design system</div><div class="gloss-def">The collection of Figma tokens, components, and guidelines defining the shared visual language across all sites on the platform.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Theme</div><div class="gloss-def">A named set of token values — Brand, Dark, Light, or White — applied to a full page or scoped to a single component to shift its visual style.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Brand</div><div class="gloss-def">The identity layer applied on top of a theme. Each advisor may have their own brand (colors, fonts, logo) while sharing the underlying theme structure.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Component</div><div class="gloss-def">A reusable UI building block (Billboard, MainNav, Cardlist…) built in Sitecore AI CMS, styled via Figma tokens, and rendered by the Next.js frontend.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Variant</div><div class="gloss-def">An alternate version of a component with a different layout or behaviour. Variants share the token system but differ structurally.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Package</div><div class="gloss-def">A curated bundle of components, variants, token configurations, and IA for a specific advisor website type. Each of the ~5 packages is a distinct, deployable site configuration.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Information architecture (IA)</div><div class="gloss-def">The organisation of pages, navigation, and content hierarchy. Each advisor package can have its own IA independently of others.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Sitecore AI CMS</div><div class="gloss-def">The content management system where components, variants, and page structures are configured. Figma tokens control the styling; authors manage content here.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Headless Next.js</div><div class="gloss-def">The frontend application that fetches content from Sitecore and renders it. "Headless" means the CMS and presentation layer are decoupled.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Dotcom</div><div class="gloss-def">The primary corporate website currently in development — a single-brand, unified experience built on the new system.</div></div>
+        <div class="gloss-item"><div class="gloss-term">Advisor website</div><div class="gloss-def">A site for individual financial advisors built using one of the ~5 packages. Each can have a distinct look, component set, and IA while sharing the core platform.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const pkgs = {
+  1: { name:'Package 1 — Conservative', tokens:'Muted palette · light and white themes primary · minimal fill variation', components:'Text-heavy cardlist, RTE tables, simple Billboard, contact form', ia:'Home · About · Services · Contact (4-page flat)', audience:'Established advisors prioritising trust and clarity' },
+  2: { name:'Package 2 — Growth', tokens:'Brand-forward palette · stronger fill accent · brand and light themes', components:'Feature Billboard with CTA, resource hub, testimonials, newsletter', ia:'Home · About · Resources · Insights · Contact (5-page with blog)', audience:'Advisors focused on lead generation and content marketing' },
+  3: { name:'Package 3 — Premium', tokens:'Dark and brand themes · high contrast · rich surface variation', components:'Full-bleed Billboard, video embed, team section, portfolio showcase', ia:'Home · Story · Capabilities · Insights · Events · Contact (6-page)', audience:'High-net-worth focused advisors and wealth management teams' },
+  4: { name:'Package 4 — Regional', tokens:'Light and white themes · neutral borders · accessible contrast ratios', components:'Multi-location map, events listing, news feed, community section', ia:'Home · Team · Locations · Events · News · Contact (6-page + sub-pages)', audience:'Regional advisory firms with multiple offices' },
+  5: { name:'Package 5 — Boutique', tokens:'Custom brand + light theme · bespoke icon fill · accent surface', components:'Minimal Billboard, long-form bio, client focus section, single CTA', ia:'Home · Philosophy · Services · Contact (3-page ultra-clean)', audience:'Independent boutique advisors with a distinct personal brand' },
+};
+
+function selectPkg(n) {
+  [1,2,3,4,5].forEach(i => document.getElementById('p'+i).classList.remove('on'));
+  document.getElementById('p'+n).classList.add('on');
+  const p = pkgs[n];
+  document.getElementById('pkg-detail').innerHTML = `
+    <div class="detail-name">${p.name}</div>
+    <div class="detail-row"><span class="dk">Token config</span><span class="dv">${p.tokens}</span></div>
+    <div class="detail-row"><span class="dk">Components</span><span class="dv">${p.components}</span></div>
+    <div class="detail-row"><span class="dk">IA structure</span><span class="dv">${p.ia}</span></div>
+    <div class="detail-row"><span class="dk">Target audience</span><span class="dv">${p.audience}</span></div>
+  `;
+}
+
+function show(id, btn) {
+  ['overview','packages','glossary'].forEach(v => {
+    document.getElementById('v-'+v).style.display = v===id ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+}
+</script>
+</body>
+</html>
